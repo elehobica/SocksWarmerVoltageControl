@@ -143,7 +143,6 @@ void gpioFunc()
 void setup()
 {
   Serial.begin(115200);
-  Wire.begin();
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIN_LED2, OUTPUT);
   pinMode(PIN_LED3, OUTPUT);
@@ -153,16 +152,19 @@ void setup()
   pinMode(PIN_UP, INPUT_PULLUP);
   pinMode(PIN_DN, INPUT_PULLUP);
 
-  digitalWrite(LED_BUILTIN, LOW);
-  digitalWrite(PIN_EN, HIGH);
+  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(PIN_EN, LOW); // at this point disable output
 
   TimerTc3.initialize(50 * 1000); // 50ms
   TimerTc3.attachInterrupt(gpioFunc);
 
-  delay(3000);
+  Wire.begin();
   mp1584wiper.setRange(vRangeMin, vRangeMax);
   mp1584wiper.printInfo();
   mp1584wiper.setLinerVoltagePos(volPos);
+
+  delay(1000);
+  digitalWrite(PIN_EN, HIGH); // here to enable output
 }
 
 // the loop function runs over and over again forever

@@ -23,18 +23,16 @@
  * SOFTWARE.
  */
 
-#include "Arduino.h"
 #include "CAT5171.h"
-#include <Wire.h>
 
-CAT5171::CAT5171(double maxResistance, bool swapAB)
-  : _address(ADDRESS0), _maxResistance(maxResistance), _swapAB(swapAB)
+CAT5171::CAT5171(TwoWire *wire, double maxResistance, bool swapAB)
+  : _wire(wire), _address(ADDRESS0), _maxResistance(maxResistance), _swapAB(swapAB)
 {
 }
 
 void CAT5171::setWiper(byte position)
 {
-  Wire.beginTransmission(_address);
+  _wire->beginTransmission(_address);
 
   if (position >= getWiperPositions()) {
     position = getWiperPositions() - 1;
@@ -43,19 +41,19 @@ void CAT5171::setWiper(byte position)
     position = getWiperPositions() - position - 1;
   }
   
-  Wire.write(B00000000);
-  Wire.write(position);
-  Wire.endTransmission();
+  _wire->write(0b00000000);
+  _wire->write(position);
+  _wire->endTransmission();
 }
 
 byte CAT5171::getWiper()
 {
   byte position = 0;
   
-  Wire.requestFrom(B0101100, 1);
+  _wire->requestFrom(0b0101100, 1);
   
-  while (Wire.available()) {
-    position = Wire.read();
+  while (_wire->available()) {
+    position = _wire->read();
   }
 
   if (_swapAB) {
@@ -83,11 +81,11 @@ double CAT5171::getMinResistance()
 
 void CAT5171::shutDown()
 {  
-  Wire.beginTransmission(_address);
+  _wire->beginTransmission(_address);
   
-  Wire.write(B00100000);
-  Wire.write((byte)0);
-  Wire.endTransmission();
+  _wire->write(0b00100000);
+  _wire->write((byte)0);
+  _wire->endTransmission();
 }
 
 void CAT5171::switchToSecondDevice()

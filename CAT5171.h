@@ -26,16 +26,17 @@
 #ifndef CAT5171_h
 #define CAT5171_h
 
-#include "Arduino.h"
+#include <Arduino.h>
+#include <Wire.h>
 #include "Wiper.h"
 
-#define ADDRESS0 B0101100
-#define ADDRESS1 B0101101
+#define ADDRESS0 0b0101100
+#define ADDRESS1 0b0101101
 
 class CAT5171: public Wiper
 {
   public:
-    CAT5171(double maxResistance, bool swapAB = false);
+    CAT5171(TwoWire *wire, double maxResistance, bool swapAB = false);
 
     // Set wiper position (0-255)
     void setWiper(byte position);
@@ -59,6 +60,7 @@ class CAT5171: public Wiper
     void switchToSecondDevice();
 
   private:
+    TwoWire *_wire;
     // The currently selected device address
     byte _address;
     double _maxResistance;

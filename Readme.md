@@ -1,3 +1,5 @@
+![SocksWarmerVoltageControl](doc/SocksWarmerVoltageControl.jpg)
+
 # SocksWarmerVoltageControl
 
 ## Overview
@@ -14,7 +16,7 @@ Simple voltage control for electric socks warmer which features:
 * MP1584 DC/DC converter
 
 ## Ciruit Diagram
-T.B.D.
+[PDF](doc/SocksWarmerVoltageControl_v100_2022_0123.pdf)
 
 ## Pin Assignment
 common for Seeeduino XIAO and Seeed XIAO RP2040

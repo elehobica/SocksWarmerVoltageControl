@@ -32,6 +32,7 @@ EnergySaving engySave;
 #define PIN_CT 6
 #define PIN_UP 2
 #define PIN_DN 3
+#define PIN_MOTOR 9
 
 #elif defined(ARDUINO_ARCH_RP2040)
 #include <pico/time.h>
@@ -48,6 +49,8 @@ EnergySaving engySave;
 #define PIN_DN D3
 #define PIN_LED2 16 // LED G
 #define PIN_LED3 17 // LED_R
+#define PIN_MOTOR D9
+
 #define NUM_NEO 1
 #define PIN_NEO_PWR 11
 #define PIN_NEOPIX  12
@@ -55,6 +58,8 @@ repeating_timer_t timer;
 Adafruit_NeoPixel neoPixel(NUM_NEO, PIN_NEOPIX, NEO_GRB + NEO_KHZ800);
 
 #endif
+
+#define MAX_MOTOR_VOLTAGE (3000 * 255 / 5000) // 3.0V from 5.0V by PWM
 
 #include "CAT5171.h"
 #include "MP1584byWiper.h"
@@ -67,11 +72,12 @@ uint32_t sw_short_filter[NUM_SW_SHORT_FILTER];
 uint32_t sw_long_filter[NUM_SW_LONG_FILTER];
 uint32_t sw_short_filter2[2];
 
-int powerDown = 0;
-int wakeUp = 0;
-int btnInc = 0;
-int btnDec = 0;
-int btnMinimum = 0;
+bool powerDown = false;
+bool repeatPowerDown = false;
+bool wakeUp = false;
+bool btnInc = false;
+bool btnDec = false;
+bool btnMinimum = false;
 
 // MP1584 voltage settings
 const double Rwiper = 50000; // [ohm] defined by CAT5171 part number (50000 or 100000)
@@ -104,7 +110,7 @@ void wakeUpFunc()
 
 #endif
   Serial.println("wake up.");
-  wakeUp = 1;
+  wakeUp = true;
 }
 
 #if defined(ARDUINO_SEEED_XIAO_M0)
@@ -159,19 +165,19 @@ bool gpioFunc(struct repeating_timer *t)
     //Serial.println("Button 1");
   }
   if (sw_short_filter_rise & (1<<1)) {
-    btnDec = 1;
+    btnDec = true;
     //Serial.println("Button 2");
   }
   if (sw_short_filter_rise & (1<<2)) {
-    btnInc = 1;
+    btnInc = true;
     //Serial.println("Button 3");
   }
   if (sw_long_filter_detect & (1<<1)) {
-    btnMinimum = 1;
+    btnMinimum = true;
     Serial.println("Long Button 2");
   }
   if (sw_long_filter_detect & (1<<0)) {
-    powerDown = 1;
+    powerDown = true;
     Serial.println("Long Button 1");
   }
 #if defined(ARDUINO_SEEED_XIAO_M0)
@@ -212,6 +218,15 @@ void colorWarmness(uint8_t level, uint8_t warmness)
 #endif
 }
 
+void vibrateMotor(bool enable)
+{
+  if (enable) {
+    analogWrite(PIN_MOTOR, 1 * MAX_MOTOR_VOLTAGE);
+  } else {
+    analogWrite(PIN_MOTOR, 0 * MAX_MOTOR_VOLTAGE);
+  }
+}
+
 #if defined(ARDUINO_ARCH_RP2040)
 // for preserving clock configuration
 static uint32_t _scr;
@@ -247,6 +262,7 @@ void setup()
   pinMode(PIN_LED2, OUTPUT);
   pinMode(PIN_LED3, OUTPUT);
   pinMode(PIN_EN, OUTPUT);
+  pinMode(PIN_MOTOR, OUTPUT);
   
   pinMode(PIN_CT, INPUT_PULLUP);
   pinMode(PIN_UP, INPUT_PULLUP);
@@ -256,6 +272,7 @@ void setup()
   digitalWrite(PIN_LED2, HIGH);
   digitalWrite(PIN_LED3, HIGH);
   digitalWrite(PIN_EN, LOW); // at this point disable output
+  digitalWrite(PIN_MOTOR, LOW);
 
 #if defined(ARDUINO_SEEED_XIAO_M0)
   TimerTc3.initialize(50 * 1000); // 50ms
@@ -278,7 +295,8 @@ void setup()
   mp1584wiper.printInfo();
   mp1584wiper.setLinerVoltagePos(vStep);
 
-  delay(1000);
+  vibrateMotor(true);
+  delay(300);
   digitalWrite(PIN_EN, HIGH); // here to enable output
 }
 
@@ -286,10 +304,11 @@ void setup()
 void loop()
 {
   colorWarmness(ledDim, vStep * 100 / (numLinearPos - 1));
-  if (ledDim > 0) ledDim -= ledDim/8 + 1;
+  vibrateMotor((ledDim >= 100));
+  if (ledDim > 0) ledDim -= ledDim/16 + 1;
   Serial.println(vStep);
   if (btnInc) {
-    btnInc = 0;
+    btnInc = false;
     ledDim = 100;
     if (vStep < numLinearPos - 1) {
       vStep++;
@@ -299,7 +318,7 @@ void loop()
   }
   if (btnDec) {
     ledDim = 100;
-    btnDec = 0;
+    btnDec = false;
     if (vStep > 0) {
       vStep--;
       mp1584wiper.setLinerVoltagePos(vStep);
@@ -307,14 +326,15 @@ void loop()
     //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
   }
   if (btnMinimum) {
-    btnMinimum = 0;
+    ledDim = 100;
+    btnMinimum = false;
     vStep = 0;
     mp1584wiper.setLinerVoltagePos(vStep);
     //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
   }
   
   if (wakeUp) {
-    wakeUp = 0;
+    wakeUp = false;
     delay(2000);
     if (!digitalRead(PIN_CT)) {
       digitalWrite(LED_BUILTIN, LOW);
@@ -325,32 +345,42 @@ void loop()
 #elif defined(ARDUINO_ARCH_RP2040)
       digitalWrite(PIN_NEO_PWR, HIGH);
 #endif
+      vibrateMotor(true);
+      powerDown = false;
+      repeatPowerDown = false;
+      delay(200);
     } else {
-      powerDown = 1;
+      repeatPowerDown = true;
     }
   }
-  if (powerDown) {
+  if (powerDown || repeatPowerDown) {
     Serial.println("PowerDown");
     digitalWrite(LED_BUILTIN, HIGH);
     digitalWrite(PIN_EN, LOW);
+    if (powerDown) {
+      for (int i = 0; i < 2; i++) {
+        ledDim = 100;
+        colorWarmness(ledDim, vStep * 100 / (numLinearPos - 1));
+        vibrateMotor(true);
+        delay(100);
+        ledDim = 0;
+        colorWarmness(ledDim, vStep * 100 / (numLinearPos - 1));
+        vibrateMotor(false);
+        delay(100);
+      }
+    }
 #if defined(ARDUINO_SEEED_XIAO_M0)
     ledDim = 0;
     // Avoid pin 1 ~ 3 because EnergySaving does NOT accept those pins 
     engySave.begin(WAKE_EXT_INTERRUPT, PIN_CT, wakeUpFunc);
-    powerDown = 0;
+    powerDown = false;
+    repeatPowerDown = false;
     TimerTc3.detachInterrupt();
     engySave.standby();
 #elif defined(ARDUINO_ARCH_RP2040)
-    for (int i = 0; i < 2; i++) {
-      ledDim = 100;
-      colorWarmness(ledDim, vStep * 100 / (numLinearPos - 1));
-      delay(100);
-      ledDim = 0;
-      colorWarmness(ledDim, vStep * 100 / (numLinearPos - 1));
-      delay(100);
-    }
     digitalWrite(PIN_NEO_PWR, LOW);
-    powerDown = 0;
+    powerDown = false;
+    repeatPowerDown = false;
     // === goto dormant then wake up ===
     uint32_t ints = save_and_disable_interrupts(); // (+a)
     _preserve_clock_before_sleep(); // (+c)
@@ -363,5 +393,5 @@ void loop()
     wakeUpFunc();
 #endif
   }
-  delay(200);
+  delay(100);
 }

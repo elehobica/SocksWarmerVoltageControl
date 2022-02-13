@@ -16,7 +16,7 @@ Simple voltage control for electric socks warmer which features:
 * MP1584 DC/DC converter
 
 ## Ciruit Diagram
-[PDF](doc/SocksWarmerVoltageControl_v100_2022_0123.pdf)
+[PDF](doc/SocksWarmerVoltageControl.pdf)
 
 ## Pin Assignment
 common for Seeeduino XIAO and Seeed XIAO RP2040
@@ -29,6 +29,7 @@ common for Seeeduino XIAO and Seeed XIAO RP2040
 |  4 | SDA | SDA | CAT5171 I2C SDA (pulled-up with 10Kohm from 3.3V) |
 |  5 | SCL | SCL | CAT5171 I2C SCL (pulled-up with 10Kohm from 3.3V) |
 |  6 | D6 | PIN_CT | Lever Switch Center |
+|  9 | D9 | PIN_MOTOR | Vibration Motor Control |
 | 11 | 3V3 | 3V3 | 3.3V out |
 | 12 | GND | GND | Ground |
 | 13 | 5V | 5V | 5.0V in from USB Battery |

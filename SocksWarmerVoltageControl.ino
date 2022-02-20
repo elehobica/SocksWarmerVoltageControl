@@ -32,6 +32,7 @@ EnergySaving engySave;
 #define PIN_CT 6
 #define PIN_UP 2
 #define PIN_DN 3
+#define PIN_PWM 7
 #define PIN_MOTOR 9
 
 #elif defined(ARDUINO_ARCH_RP2040)
@@ -47,9 +48,10 @@ EnergySaving engySave;
 #define PIN_CT D6
 #define PIN_UP D2
 #define PIN_DN D3
+#define PIN_PWM D7
+#define PIN_MOTOR D9
 #define PIN_LED2 16 // LED G
 #define PIN_LED3 17 // LED_R
-#define PIN_MOTOR D9
 
 #define NUM_NEO 1
 #define PIN_NEO_PWR 11
@@ -63,6 +65,8 @@ Adafruit_NeoPixel neoPixel(NUM_NEO, PIN_NEOPIX, NEO_GRB + NEO_KHZ800);
 
 #include "CAT5171.h"
 #include "MP1584byWiper.h"
+
+#include "Pwm.h"
 
 // GPIO Filter Setting
 #define NUM_SW_SHORT_FILTER 2
@@ -79,13 +83,18 @@ bool btnInc = false;
 bool btnDec = false;
 bool btnMinimum = false;
 
+// User Voltage Range
+const double vRangeMin = 2.0;     // [V] user can define
+const double vRangeMax = 3.5;     // [V] user can define
+
+// PWM
+const double vPwmMax = 5.00;     // [V] from schematicy
+
 // MP1584 voltage settings
 const double Rwiper = 50000; // [ohm] defined by CAT5171 part number (50000 or 100000)
 const bool   swapAB = true;  // swap AB of wiper
 const double Rtop   = 56000; // [ohm] defined by MP1584 peripheral circuit
 const double Rbtm   = 10000; // [ohm] defined by MP1584 peripheral circuit
-const double vRangeMin = 2.0;     // [V] user can define
-const double vRangeMax = 3.5;     // [V] user can define
 const uint32_t numLinearPos = 11; // [steps] user can define
 
 #if defined(ARDUINO_SEEED_XIAO_M0)
@@ -94,6 +103,7 @@ CAT5171 cat5171(&Wire, Rwiper, swapAB);
 CAT5171 cat5171(&Wire1, Rwiper, swapAB);
 #endif
 MP1584byWiper mp1584wiper(&cat5171, numLinearPos, Rtop, Rbtm);
+Pwm pwm(PIN_PWM, numLinearPos, vPwmMax);
 
 uint32_t vStep = 0;
 uint8_t ledDim = 100;
@@ -254,6 +264,21 @@ static void _recover_clock_after_sleep()
 // === 'recover_from_sleep' part (end) ===================================
 #endif
 
+static void setRange(double vMin, double vMax)
+{
+  mp1584wiper.setRange(vRangeMin, vRangeMax);
+  mp1584wiper.printInfo();
+  pwm.setRange(vRangeMin, vRangeMax);
+  pwm.printInfo();
+}
+
+static void setLinerVoltagePos(uint16_t pos)
+{
+  mp1584wiper.setLinerVoltagePos(pos);
+  //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
+  pwm.setLinerVoltagePos(pos);
+}
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
@@ -262,6 +287,7 @@ void setup()
   pinMode(PIN_LED2, OUTPUT);
   pinMode(PIN_LED3, OUTPUT);
   pinMode(PIN_EN, OUTPUT);
+  pinMode(PIN_PWM, OUTPUT);
   pinMode(PIN_MOTOR, OUTPUT);
   
   pinMode(PIN_CT, INPUT_PULLUP);
@@ -272,6 +298,7 @@ void setup()
   digitalWrite(PIN_LED2, HIGH);
   digitalWrite(PIN_LED3, HIGH);
   digitalWrite(PIN_EN, LOW); // at this point disable output
+  digitalWrite(PIN_PWM, LOW);
   digitalWrite(PIN_MOTOR, LOW);
 
 #if defined(ARDUINO_SEEED_XIAO_M0)
@@ -291,9 +318,8 @@ void setup()
   Wire1.begin();
 #endif
 
-  mp1584wiper.setRange(vRangeMin, vRangeMax);
-  mp1584wiper.printInfo();
-  mp1584wiper.setLinerVoltagePos(vStep);
+  setRange(vRangeMin, vRangeMax);
+  setLinerVoltagePos(vStep);
 
   vibrateMotor(true);
   delay(300);
@@ -312,25 +338,22 @@ void loop()
     ledDim = 100;
     if (vStep < numLinearPos - 1) {
       vStep++;
-      mp1584wiper.setLinerVoltagePos(vStep);
+      setLinerVoltagePos(vStep);
     }
-    //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
   }
   if (btnDec) {
     ledDim = 100;
     btnDec = false;
     if (vStep > 0) {
       vStep--;
-      mp1584wiper.setLinerVoltagePos(vStep);
+      setLinerVoltagePos(vStep);
     }
-    //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
   }
   if (btnMinimum) {
     ledDim = 100;
     btnMinimum = false;
     vStep = 0;
-    mp1584wiper.setLinerVoltagePos(vStep);
-    //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
+    setLinerVoltagePos(vStep);
   }
   
   if (wakeUp) {

@@ -22,16 +22,16 @@
  * SOFTWARE.
  */
 
-#include "MP1584byWiper.h"
+#include "VoltageController.h"
 
-MP1584byWiper::MP1584byWiper(Wiper *wiper, uint16_t numLinearPos, double Rtop, double Rbtm)
-  : _wiper(wiper), _numLinearPos(numLinearPos), _Rtop(Rtop), _Rbtm(Rbtm)
+VoltageController::VoltageController(uint16_t numLinearPos)
+  : _numLinearPos(numLinearPos)
 {
-  _vRangeMin = getFloorVoltage();
-  _vRangeMax = getCeilVoltage();
+  //_vRangeMin = getFloorVoltage();
+  //_vRangeMax = getCeilVoltage();
 }
 
-void MP1584byWiper::setRange(double vMin, double vMax)
+void VoltageController::setRange(double vMin, double vMax)
 {
   _vRangeMin = vMin;
   _vRangeMax = vMax;
@@ -49,12 +49,12 @@ void MP1584byWiper::setRange(double vMin, double vMax)
   }
 }
 
-void MP1584byWiper::printInfo()
+void VoltageController::printInfo()
 {
   Serial.printf("Limitation Range: %7.4fV ~ %7.4fV, Usage Range %7.4fV ~ %7.4fV\n", getFloorVoltage(), getCeilVoltage(), _vRangeMin, _vRangeMax);
 }
 
-void MP1584byWiper::setLinerVoltagePos(uint16_t pos)
+void VoltageController::setLinerVoltagePos(uint16_t pos)
 {
   if (pos >= _numLinearPos - 1) {
     pos = _numLinearPos - 1;
@@ -62,51 +62,4 @@ void MP1584byWiper::setLinerVoltagePos(uint16_t pos)
   double vOutTarget = _vRangeMin + (_vRangeMax - _vRangeMin) * pos / (_numLinearPos - 1);
   //Serial.printf("vOutTarget: %7.4f, pos: %d, numPos: %d\n", vOutTarget, pos, _numLinearPos);
   setVoltage(vOutTarget);
-}
-
-double MP1584byWiper::getCeilVoltage()
-{
-  return getVoltageByRwiper(_wiper->getMinResistance());
-}
-
-double MP1584byWiper::getFloorVoltage()
-{
-  return getVoltageByRwiper(_wiper->getMaxResistance());
-}
-
-double MP1584byWiper::getVoltage()
-{
-  double RwiperMax = _wiper->getMaxResistance();
-  double RwiperMin = _wiper->getMinResistance();
-  uint32_t numWiperPos = _wiper->getWiperPositions();
-  uint32_t RwiperPos = _wiper->getWiper();
-  double Rwiper = RwiperPos * (RwiperMax - RwiperMin) / (numWiperPos - 1) + RwiperMin;
-  return getVoltageByRwiper(Rwiper);
-}
-
-double MP1584byWiper::getVoltageByRwiper(double Rwiper)
-{
-  return (_Rtop + Rwiper + _Rbtm) / (Rwiper + _Rbtm) * Vref;
-}
-
-void MP1584byWiper::setVoltage(double voltage)
-{
-  if (voltage > _vRangeMax) {
-    voltage = _vRangeMax;
-  }
-  if (voltage < _vRangeMin) {
-    voltage = _vRangeMin;
-  }
-  double RwiperTarget = Vref * _Rtop / (voltage - Vref) - _Rbtm;
-  double RwiperMax = _wiper->getMaxResistance();
-  double RwiperMin = _wiper->getMinResistance();
-  if (RwiperTarget < RwiperMin) {
-    RwiperTarget = RwiperMin;
-  } else if (RwiperTarget > RwiperMax) {
-    RwiperTarget = RwiperMax;
-  }
-  uint32_t numWiperPos = _wiper->getWiperPositions();
-  uint32_t RwiperPos = (RwiperTarget - RwiperMin) * (numWiperPos - 1) / (RwiperMax - RwiperMin) + 0.5;
-  //Serial.printf("RwiperTarget: %7.4f, wiperPos: %d\n", RwiperTarget, RwiperPos);
-  _wiper->setWiper(RwiperPos);
 }

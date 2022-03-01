@@ -84,11 +84,11 @@ bool btnDec = false;
 bool btnMinimum = false;
 
 // User Voltage Range
-const double vRangeMin = 2.0;     // [V] user can define
+const double vRangeMin = 1.0;     // [V] user can define
 const double vRangeMax = 3.5;     // [V] user can define
 
 // PWM
-const double vPwmMax = 5.00;     // [V] from schematicy
+const double vPwmMax = 5.00;     // [V] from schematic
 
 // MP1584 voltage settings
 const double Rwiper = 50000; // [ohm] defined by CAT5171 part number (50000 or 100000)

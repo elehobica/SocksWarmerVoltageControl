@@ -22,31 +22,31 @@
  * SOFTWARE.
  */
 
-#include "Pwm.h"
+#include "PwmSignal.h"
 
-Pwm::Pwm(uint8_t pin, uint16_t numLinearPos, double vTop)
+PwmSignal::PwmSignal(uint8_t pin, uint16_t numLinearPos, double vTop)
   : VoltageController(numLinearPos), _pin(pin), _vTop(vTop), _pwmRatio(0)
 {
   _vRangeMin = getFloorVoltage();
   _vRangeMax = getCeilVoltage();
 }
 
-double Pwm::getCeilVoltage()
+double PwmSignal::getCeilVoltage()
 {
   return _vTop;
 }
 
-double Pwm::getFloorVoltage()
+double PwmSignal::getFloorVoltage()
 {
   return 0.0;
 }
 
-double Pwm::getVoltage()
+double PwmSignal::getVoltage()
 {
   return (double) _pwmRatio * (getCeilVoltage() - getFloorVoltage()) / 255.0 + getFloorVoltage();
 }
 
-void Pwm::setVoltage(double voltage)
+void PwmSignal::setVoltage(double voltage)
 {
   if (voltage > _vRangeMax) {
     voltage = _vRangeMax;

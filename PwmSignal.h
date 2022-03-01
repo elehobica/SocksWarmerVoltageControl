@@ -27,10 +27,10 @@
 #include <Arduino.h>
 #include "VoltageController.h"
 
-class Pwm : public VoltageController
+class PwmSignal : public VoltageController
 {
   public:
-    Pwm(uint8_t pin, uint16_t numLinearPos, double vTop);
+    PwmSignal(uint8_t pin, uint16_t numLinearPos, double vTop);
 
     // Get Ceil Voltage (highest voltage by wiper limitaion)
     virtual double getCeilVoltage();

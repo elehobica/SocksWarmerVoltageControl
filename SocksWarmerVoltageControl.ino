@@ -66,7 +66,7 @@ Adafruit_NeoPixel neoPixel(NUM_NEO, PIN_NEOPIX, NEO_GRB + NEO_KHZ800);
 #include "CAT5171.h"
 #include "MP1584byWiper.h"
 
-#include "Pwm.h"
+#include "PwmSignal.h"
 
 // GPIO Filter Setting
 #define NUM_SW_SHORT_FILTER 2
@@ -103,7 +103,7 @@ CAT5171 cat5171(&Wire, Rwiper, swapAB);
 CAT5171 cat5171(&Wire1, Rwiper, swapAB);
 #endif
 MP1584byWiper mp1584wiper(&cat5171, numLinearPos, Rtop, Rbtm);
-Pwm pwm(PIN_PWM, numLinearPos, vPwmMax);
+PwmSignal pwmSig(PIN_PWM, numLinearPos, vPwmMax);
 
 uint32_t vStep = 0;
 uint8_t ledDim = 100;
@@ -268,15 +268,15 @@ static void setRange(double vMin, double vMax)
 {
   mp1584wiper.setRange(vRangeMin, vRangeMax);
   mp1584wiper.printInfo();
-  pwm.setRange(vRangeMin, vRangeMax);
-  pwm.printInfo();
+  pwmSig.setRange(vRangeMin, vRangeMax);
+  pwmSig.printInfo();
 }
 
 static void setLinerVoltagePos(uint16_t pos)
 {
   mp1584wiper.setLinerVoltagePos(pos);
   //Serial.printf("pos: %d, voltage: %7.4f\r\n", vStep, mp1584wiper.getVoltage());
-  pwm.setLinerVoltagePos(pos);
+  pwmSig.setLinerVoltagePos(pos);
 }
 
 // the setup function runs once when you press reset or power the board

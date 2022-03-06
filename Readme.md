@@ -29,6 +29,7 @@ common for Seeeduino XIAO and Seeed XIAO RP2040
 |  4 | SDA | SDA | CAT5171 I2C SDA (pulled-up with 10Kohm from 3.3V) |
 |  5 | SCL | SCL | CAT5171 I2C SCL (pulled-up with 10Kohm from 3.3V) |
 |  6 | D6 | PIN_CT | Lever Switch Center |
+|  7 | D7 | PIN_PWM | PWM output (when PWM drive usage) |
 |  9 | D9 | PIN_MOTOR | Vibration Motor Control |
 | 11 | 3V3 | 3V3 | 3.3V out |
 | 12 | GND | GND | Ground |
